@@ -13,6 +13,19 @@ _Bool loadMedia();
 //Frees media and shuts down SDL
 void close_SDL();
 
+
+struct GameStruct {
+    _Bool quit;
+};
+//Game main loop
+void gameLoop();
+
+//event handling 
+void handleEvents(struct GameStruct * game);
+
+
+
+
 //The window we`be rendering to
 SDL_Window* gWindow = NULL;
 
@@ -34,12 +47,11 @@ int main() {
         } else {
             //Apply the image
             SDL_BlitSurface(gHelloWorld, NULL, gScreenSurface, NULL);
-            //Update the surface 
-            SDL_UpdateWindowSurface(gWindow);
-            //Wait two seconds
-            SDL_Delay(2000);
+
+            gameLoop();
         }
     }
+
     //Free resources and close SDL
     close_SDL();
     exit(0);
@@ -91,4 +103,27 @@ void close_SDL() {
 
     //Quit SDL subsystems
     SDL_Quit();
+}
+
+void gameLoop() {
+    struct GameStruct game;
+    //Main loop flag
+    game.quit = 0;
+    while (!game.quit) {
+        handleEvents(&game);
+        //Update the surface
+        SDL_UpdateWindowSurface( gWindow );
+    }
+}
+
+
+void handleEvents(struct GameStruct * game) {
+    SDL_Event e;
+    //Handle events on queue
+    while (SDL_PollEvent(&e)) {
+        //User requests quit
+        if(e.type == SDL_QUIT) {
+            game->quit = 1;
+        }
+    }
 }
