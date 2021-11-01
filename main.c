@@ -7,12 +7,14 @@
 //Starts up SDL and creates window
 _Bool init();
 
+
+SDL_Surface* loadSurface(char* path);
+
 //Load media
 _Bool loadMedia();
 
 //Frees media and shuts down SDL
 void close_SDL();
-
 
 struct GameStruct {
     _Bool quit;
@@ -23,9 +25,6 @@ void gameLoop();
 //event handling 
 void handleEvents(struct GameStruct * game);
 
-
-
-
 //The window we`be rendering to
 SDL_Window* gWindow = NULL;
 
@@ -33,7 +32,7 @@ SDL_Window* gWindow = NULL;
 SDL_Surface* gScreenSurface = NULL;
 
 //The image we will load and show on the screen
-SDL_Surface* gHelloWorld = NULL;
+SDL_Surface* gBackScreenSurface = NULL;
 
 
 int main() {
@@ -45,9 +44,6 @@ int main() {
         if (!loadMedia()) {
             printf("Failed to load media!\n");
         } else {
-            //Apply the image
-            SDL_BlitSurface(gHelloWorld, NULL, gScreenSurface, NULL);
-
             gameLoop();
         }
     }
@@ -84,8 +80,8 @@ _Bool loadMedia() {
     _Bool success = 1;
 
     //Load splash image
-    gHelloWorld = SDL_LoadBMP("hello_world.bmp");
-    if (gHelloWorld == NULL) {
+    gBackScreenSurface = loadSurface("hello_world.bmp");
+    if (gBackScreenSurface == NULL) {
         printf("Unable to load image %s! SDL_Error: %s\n","hello_world.bmp", SDL_GetError());
         success = 0;
     }
@@ -94,8 +90,8 @@ _Bool loadMedia() {
 
 void close_SDL() {
     //Deallocate surface
-    SDL_FreeSurface(gHelloWorld);
-    gHelloWorld = NULL;
+    SDL_FreeSurface(gBackScreenSurface);
+    gBackScreenSurface = NULL;
 
     //Destroy window
     SDL_DestroyWindow(gWindow);
@@ -112,6 +108,14 @@ void gameLoop() {
     while (!game.quit) {
         handleEvents(&game);
         //Update the surface
+        //Apply the image stretched
+        SDL_Rect stretchRect;
+        stretchRect.x = 0;
+        stretchRect.y = 0;
+        stretchRect.w = SCREEN_WIDTH;
+        stretchRect.h = SCREEN_HEIGHT;
+        //Apply the image
+        SDL_BlitScaled(gBackScreenSurface, NULL, gScreenSurface, &stretchRect);
         SDL_UpdateWindowSurface( gWindow );
     }
 }
@@ -126,4 +130,26 @@ void handleEvents(struct GameStruct * game) {
             game->quit = 1;
         }
     }
+}
+
+SDL_Surface* loadSurface(char* path) {
+    //The final optimized image
+    SDL_Surface* optimizedSurface = NULL;
+
+    //Load image at specified path
+    SDL_Surface* loadedSurface = SDL_LoadBMP(path);
+    if (loadedSurface == NULL) {
+        printf("Unable to load image %s! SDL_Error: %s\n", path, SDL_GetError());
+    } else {
+        //Convert surface to screen fornat
+        optimizedSurface = SDL_ConvertSurface(loadedSurface, gScreenSurface->format, 0);
+        if(optimizedSurface == NULL) {
+            printf("Unable to optimize image %s! SDL_Error: %s\n", path, SDL_GetError());
+        }
+
+        //Get rid of old loaded surface
+        SDL_FreeSurface(loadedSurface);
+    }
+
+    return optimizedSurface;
 }
