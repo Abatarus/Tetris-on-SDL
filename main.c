@@ -9,7 +9,7 @@
 _Bool init();
 
 
-SDL_Surface* loadSurface(char* path);
+SDL_Texture* loadTexture(char* path);
 
 //Load media
 _Bool loadMedia();
@@ -29,11 +29,11 @@ void handleEvents(struct GameStruct * game);
 //The window we`be rendering to
 SDL_Window* gWindow = NULL;
 
-//The surface contained by the window
-SDL_Surface* gScreenSurface = NULL;
+//The window render
+SDL_Renderer* gRenderer = NULL;
 
-//The image we will load and show on the screen
-SDL_Surface* gBackScreenSurface = NULL;
+//Current displayed texture
+SDL_Texture* gTexture = NULL;
 
 
 int main() {
@@ -65,21 +65,27 @@ _Bool init() {
         //Create window
         gWindow = SDL_CreateWindow("SDL works", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
                         SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+
         if (gWindow == NULL) {
             printf("Window could not be created! SDL_Error: %s.\n", SDL_GetError());
             success = 0;
         } else {
-            //Initialize PNG loading
-            int imgFlags = IMG_INIT_PNG;
-            if( !( IMG_Init( imgFlags ) & imgFlags ) )
-            {
-                printf( "SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError() );
+            //Create renderer for windows
+            gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
+
+            if (gRenderer == NULL) {
+                printf("Renderer could not be created! SDL Error: %s\n", SDL_GetError());
                 success = 0;
-            }
-            else
-            {
-                //Get window surface
-                gScreenSurface = SDL_GetWindowSurface( gWindow );
+            } else {
+                //Initialize render color
+                SDL_SetRenderDrawColor(gRenderer, 0xff, 0xff, 0xff, 0xff);
+                
+                //Initialize PNG loading
+                int imgFlags = IMG_INIT_PNG;
+                if (!(IMG_Init(imgFlags) & imgFlags)) {
+                    printf("SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError());
+                    success = 0;
+                }
             }
         }
     }
@@ -91,9 +97,9 @@ _Bool loadMedia() {
     _Bool success = 1;
 
     //Load splash image
-    gBackScreenSurface = loadSurface("loaded.png");
-    if (gBackScreenSurface == NULL) {
-        printf("Unable to load image %s! SDL_Error: %s\n","loaded.png", SDL_GetError());
+    gTexture = loadTexture("tetris_sprites.png");
+    if (gTexture == NULL) {
+        printf("Unable to load image %s! SDL_Error: %s\n","tetris_sprites.png", SDL_GetError());
         success = 0;
     }
     return success;
@@ -101,11 +107,12 @@ _Bool loadMedia() {
 
 void close_SDL() {
     //Deallocate surface
-    SDL_FreeSurface(gBackScreenSurface);
-    gBackScreenSurface = NULL;
+    SDL_DestroyTexture(gTexture);
+    gTexture = NULL;
 
     //Destroy window
     SDL_DestroyWindow(gWindow);
+    SDL_DestroyRenderer(gRenderer);
     gWindow = NULL;
 
     //Quit SDL subsystems
@@ -118,16 +125,15 @@ void gameLoop() {
     game.quit = 0;
     while (!game.quit) {
         handleEvents(&game);
-        //Update the surface
-        //Apply the image stretched
-        SDL_Rect stretchRect;
-        stretchRect.x = 0;
-        stretchRect.y = 0;
-        stretchRect.w = SCREEN_WIDTH;
-        stretchRect.h = SCREEN_HEIGHT;
-        //Apply the image
-        SDL_BlitScaled(gBackScreenSurface, NULL, gScreenSurface, &stretchRect);
-        SDL_UpdateWindowSurface( gWindow );
+        
+        //Clear screen
+        SDL_RenderClear(gRenderer);
+
+        //Render texture to screen
+        SDL_RenderCopy(gRenderer, gTexture, NULL, NULL);
+
+        //Update screen
+        SDL_RenderPresent(gRenderer);
     }
 }
 
@@ -143,24 +149,24 @@ void handleEvents(struct GameStruct * game) {
     }
 }
 
-SDL_Surface* loadSurface(char* path) {
-    //The final optimized image
-    SDL_Surface* optimizedSurface = NULL;
+SDL_Texture* loadTexture(char* path) {
+    //The final teture
+    SDL_Texture* newTexture = NULL;
 
     //Load image at specified path
     SDL_Surface* loadedSurface = IMG_Load(path);
     if (loadedSurface == NULL) {
         printf("Unable to load image %s! SDL_Error: %s\n", path, SDL_GetError());
     } else {
-        //Convert surface to screen fornat
-        optimizedSurface = SDL_ConvertSurface(loadedSurface, gScreenSurface->format, 0);
-        if(optimizedSurface == NULL) {
-            printf("Unable to optimize image %s! SDL_Error: %s\n", path, SDL_GetError());
+        //Convert texture from surface pixels
+        newTexture = SDL_CreateTextureFromSurface(gRenderer, loadedSurface);
+        if(newTexture == NULL) {
+            printf("Unable to create texture %s! SDL_Error: %s\n", path, SDL_GetError());
         }
 
         //Get rid of old loaded surface
         SDL_FreeSurface(loadedSurface);
     }
 
-    return optimizedSurface;
+    return newTexture;
 }
