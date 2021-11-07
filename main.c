@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include <stdio.h>
 
 #define SCREEN_WIDTH 800
@@ -68,8 +69,18 @@ _Bool init() {
             printf("Window could not be created! SDL_Error: %s.\n", SDL_GetError());
             success = 0;
         } else {
-            //Get window surface
-            gScreenSurface = SDL_GetWindowSurface(gWindow);
+            //Initialize PNG loading
+            int imgFlags = IMG_INIT_PNG;
+            if( !( IMG_Init( imgFlags ) & imgFlags ) )
+            {
+                printf( "SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError() );
+                success = 0;
+            }
+            else
+            {
+                //Get window surface
+                gScreenSurface = SDL_GetWindowSurface( gWindow );
+            }
         }
     }
     return success;        
@@ -80,9 +91,9 @@ _Bool loadMedia() {
     _Bool success = 1;
 
     //Load splash image
-    gBackScreenSurface = loadSurface("hello_world.bmp");
+    gBackScreenSurface = loadSurface("loaded.png");
     if (gBackScreenSurface == NULL) {
-        printf("Unable to load image %s! SDL_Error: %s\n","hello_world.bmp", SDL_GetError());
+        printf("Unable to load image %s! SDL_Error: %s\n","loaded.png", SDL_GetError());
         success = 0;
     }
     return success;
@@ -137,7 +148,7 @@ SDL_Surface* loadSurface(char* path) {
     SDL_Surface* optimizedSurface = NULL;
 
     //Load image at specified path
-    SDL_Surface* loadedSurface = SDL_LoadBMP(path);
+    SDL_Surface* loadedSurface = IMG_Load(path);
     if (loadedSurface == NULL) {
         printf("Unable to load image %s! SDL_Error: %s\n", path, SDL_GetError());
     } else {
